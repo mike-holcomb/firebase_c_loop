@@ -1,13 +1,16 @@
 CFLAGS=-g -Wall -O3
 LIBS= -lm -ljson-c -lcurl
-SOURCES = timelog_read.c 
+SOURCES = timelog_read.c firebase_test.c
+PROGRAMS = timelog_read firebase_test
 
-all: timelog_read 
-	gcc $(CFLAGS) $(LIBS) $(SOURCES) -o timelog
+all: $(PROGRAMS)
 
 timelog_read: timelog_read.c
 	gcc $(CFLAGS) $(LIBS) timelog_read.c -o timelog_read
 
+firebase_test: firebase_test.c
+	gcc $(CFLAGS) $(LIBS) firebase_test.c -o firebase_test
+
 
 clean:
-	rm *o timelog
+	rm $(PROGRAMS)
