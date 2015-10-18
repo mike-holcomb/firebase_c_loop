@@ -31,10 +31,10 @@ struct timelog_request_st {
 
 // Reading struct
 struct timelog_reading_st {
-  float temp;
-  float humidity;
+  double temp;
+  double humidity;
   unsigned int light;
-  struct tm reading_time;
+  struct tm *reading_time;
 };
 
 struct timelog_request_st *timelog_request_create(const char *url,json_object *json){
@@ -61,13 +61,25 @@ struct timelog_request_st *timelog_request_create(const char *url,json_object *j
 }
 
 // Create reading pointer with given sensor readings, time defaults to reading creation
+struct timelog_reading_st *timelog_reading_create(double temp, double humidity, unsigned int light){
+  struct timelog_reading_st *reading = malloc(sizeof (struct timelog_reading_st));
+  reading->temp = temp;
+  reading->humidity = humidity;
+  reading->light = light;
+
+  time_t rawtime;
+  time(&rawtime);
+  reading->reading_time = (struct tm *)localtime(&rawtime);
+
+  return reading;
+}
 
 // Create json from reading
 json_object *timelog_json_create(struct timelog_reading_st *reading){
   json_object *json = json_object_new_object();
-  json_object_object_add(json, "title", json_object_new_string("testies"));
-  json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
-  json_object_object_add(json, "userId", json_object_new_int(123));
+  json_object_object_add(json, "temp", json_object_new_double(reading->temp));
+  json_object_object_add(json, "humidity", json_object_new_double(reading->humidity));
+  json_object_object_add(json, "light", json_object_new_int(reading->light));
   
   return json;
 }
@@ -126,7 +138,7 @@ CURLcode timelog_fetch_url(CURL *ch,
 int main(int argc, char *argv[]) {
   char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
 
-  struct timelog_reading_st *reading = malloc(sizeof (struct timelog_reading_st));
+  struct timelog_reading_st *reading = timelog_reading_create(90.08,50.05,300);
 
   json_object *json = timelog_json_create(reading);  
 
