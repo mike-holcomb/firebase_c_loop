@@ -70,6 +70,62 @@ CURLcode timelog_fetch_url(CURL *ch,
 
 
 int main(int argc, char *argv[]) {
+  CURL *ch; //curl handle
+  CURLcode rcode; //result code
+  
+  json_object *json; //json post body
+  enum json_tokener_error jerr = json_tokener_success; // json parse error
+
+  struct timelog_message_st curl_fetch;
+  struct timelog_message_st *cf = &curl_fetch;
+  struct curl_slist *headers = NULL;
+
+  char *url = "http://jsonplaceholder.typicode.com/posts/";
+  
+  //Init curl handle
+  if ((ch = curl_easy_init()) == NULL) {
+    fprintf(stderr, "ERROR: Failed to create curl handle in fetch_session");
+    return 1;
+  }
+
+  headers = curl_slist_append(headers, "Accept: application/json");
+  headers = curl_slist_append(headers, "Content-Type: application/json");
+
+  json = json_object_new_object();
+  json_object_object_add(json, "title", json_object_new_string("testies"));
+  json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
+  json_object_object_add(json, "userId", json_object_new_int(123));
+
+  curl_easy_setopt(ch, CURLOPT_CUSTOMREQUEST, "POST");
+  curl_easy_setopt(ch, CURLOPT_HTTPHEADER, headers); 
+  curl_easy_setopt(ch, CURLOPT_POSTFIELDS, json_object_to_json_string(json));
+  
+  rcode = timelog_fetch_url(ch, url, cf);
+
+  curl_easy_cleanup(ch);
+
+  json_object_put(json);
+
+  if (rcode != CURLE_OK || cf->size < 1) {
+    fprintf(stderr, "ERROR: Failed to fetch url (%s) - curl said: %s", url, curl_easy_strerror(rcode));
+    return 2;
+  }
+
+  if (cf->message != NULL) {
+    printf("Curl returned: \n%s\n", cf->message);
+    json = json_tokener_parse_verbose(cf->message, &jerr);
+    free(cf->message);
+  } else {
+    fprintf(stderr, "ERROR: Failed to populate payload");
+    return 3;
+  }
+
+  if (jerr != json_tokener_success) {
+    fprintf(stderr, "ERROR: Failed to parse error string");
+    return 4;
+  }
+
+  printf("Parsed JSON: %s\n", json_object_to_json_string(json));
   return 0;
 
 }
