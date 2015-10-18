@@ -60,6 +60,18 @@ struct timelog_request_st *timelog_request_create(const char *url,json_object *j
   return request;
 }
 
+// Create reading pointer with given sensor readings, time defaults to reading creation
+
+// Create json from reading
+json_object *timelog_json_create(struct timelog_reading_st *reading){
+  json_object *json = json_object_new_object();
+  json_object_object_add(json, "title", json_object_new_string("testies"));
+  json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
+  json_object_object_add(json, "userId", json_object_new_int(123));
+  
+  return json;
+}
+
 // Callback
 size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) {
   size_t buffer_size = size * nmemb;
@@ -113,11 +125,10 @@ CURLcode timelog_fetch_url(CURL *ch,
 
 int main(int argc, char *argv[]) {
   char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
-  
-  json_object *json = json_object_new_object();
-  json_object_object_add(json, "title", json_object_new_string("testies"));
-  json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
-  json_object_object_add(json, "userId", json_object_new_int(123));
+
+  struct timelog_reading_st *reading = malloc(sizeof (struct timelog_reading_st));
+
+  json_object *json = timelog_json_create(reading);  
 
   struct timelog_request_st *rh = timelog_request_create(url, json);
 
