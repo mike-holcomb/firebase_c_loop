@@ -18,14 +18,34 @@ struct timelog_message_st {
 };
 
 struct timelog_request_st {
-  struct timelog_message_st *message;
+  struct timelog_message_st *cf;
   CURL *ch;
   CURLcode rcode;
-  char *url;
+  const char *url;
   json_object *json;
   enum json_tokener_error jerr;
   struct curl_slist *headers;
 };
+
+int timelog_request_init(struct timelog_request_st *request, const char *url,json_object *json){
+  request->url = url;
+  request->jerr = json_tokener_success;
+  request->headers = NULL;
+  if ((request->ch = curl_easy_init()) == NULL) {
+    return 1;
+  }
+
+  request->headers = curl_slist_append(request->headers, "Accept: application/json");
+  request->headers = curl_slist_append(request->headers, "Content-Type: application/json");
+
+  request->json = json;
+  
+  curl_easy_setopt(request->ch, CURLOPT_CUSTOMREQUEST, "PUT");
+  curl_easy_setopt(request->ch, CURLOPT_HTTPHEADER, request->headers);
+  curl_easy_setopt(request->ch, CURLOPT_POSTFIELDS, json_object_to_json_string(request->json));
+
+  return 0;
+}
 
 // Callback
 size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) {
@@ -80,64 +100,49 @@ CURLcode timelog_fetch_url(CURL *ch,
 
 
 int main(int argc, char *argv[]) {
-  CURL *ch; //curl handle
-  CURLcode rcode; //result code
-  
-  json_object *json; //json post body
-  enum json_tokener_error jerr = json_tokener_success; // json parse error
-
-  struct timelog_message_st curl_fetch;
-  struct timelog_message_st *cf = &curl_fetch;
-  struct curl_slist *headers = NULL;
-
+  struct timelog_request_st request;
+  struct timelog_request_st *rh = &request;
+  json_object *json;
   char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
   
-  //Init curl handle
-  if ((ch = curl_easy_init()) == NULL) {
-    fprintf(stderr, "ERROR: Failed to create curl handle in fetch_session");
-    return 1;
-  }
-
-  headers = curl_slist_append(headers, "Accept: application/json");
-  headers = curl_slist_append(headers, "Content-Type: application/json");
-
   json = json_object_new_object();
   json_object_object_add(json, "title", json_object_new_string("testies"));
   json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
   json_object_object_add(json, "userId", json_object_new_int(123));
 
-  curl_easy_setopt(ch, CURLOPT_CUSTOMREQUEST, "PUT");
-  curl_easy_setopt(ch, CURLOPT_HTTPHEADER, headers); 
-  curl_easy_setopt(ch, CURLOPT_POSTFIELDS, json_object_to_json_string(json));
+  if ( timelog_request_init(rh, url, json) == 1) {
+    fprintf(stderr, "ERROR: Failed to create curl handle in timelog_request_init");
+    return 1;
+  }
 
   printf("Posting data to: %s\n", url);
   
-  rcode = timelog_fetch_url(ch, url, cf);
+  rh->rcode = timelog_fetch_url(rh->ch, rh->url, rh->cf);
 
-  curl_easy_cleanup(ch);
+  curl_easy_cleanup(rh->ch);
 
-  json_object_put(json);
+  json_object_put(rh->json);
 
-  if (rcode != CURLE_OK || cf->size < 1) {
-    fprintf(stderr, "ERROR: Failed to fetch url (%s) - curl said: %s", url, curl_easy_strerror(rcode));
+  if (rh->rcode != CURLE_OK || rh->cf->size < 1) {
+    fprintf(stderr, "ERROR: Failed to fetch url (%s) - curl said: %s", rh->url, curl_easy_strerror(rh->rcode));
     return 2;
   }
 
-  if (cf->message != NULL) {
-    printf("Curl returned: \n%s\n", cf->message);
-    json = json_tokener_parse_verbose(cf->message, &jerr);
-    free(cf->message);
+  if (rh->cf->message != NULL) {
+    printf("Curl returned: \n%s\n", rh->cf->message);
+    rh->json = json_tokener_parse_verbose(rh->cf->message, &rh->jerr);
+    free(rh->cf->message);
   } else {
     fprintf(stderr, "ERROR: Failed to populate payload");
     return 3;
   }
 
-  if (jerr != json_tokener_success) {
+  if (rh->jerr != json_tokener_success) {
     fprintf(stderr, "ERROR: Failed to parse error string");
     return 4;
   }
 
-  printf("Parsed JSON: %s\n", json_object_to_json_string(json));
-  return 0;
+  printf("Parsed JSON: %s\n", json_object_to_json_string(rh->json));
 
+  return 0;
 }
