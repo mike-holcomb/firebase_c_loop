@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
   struct timelog_message_st *cf = &curl_fetch;
   struct curl_slist *headers = NULL;
 
-  char *url = "http://jsonplaceholder.typicode.com/posts/";
+  char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
   
   //Init curl handle
   if ((ch = curl_easy_init()) == NULL) {
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
   json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
   json_object_object_add(json, "userId", json_object_new_int(123));
 
-  curl_easy_setopt(ch, CURLOPT_CUSTOMREQUEST, "POST");
+  curl_easy_setopt(ch, CURLOPT_CUSTOMREQUEST, "PUT");
   curl_easy_setopt(ch, CURLOPT_HTTPHEADER, headers); 
   curl_easy_setopt(ch, CURLOPT_POSTFIELDS, json_object_to_json_string(json));
 
