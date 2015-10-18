@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 
 #include <json-c/json.h>
 #include <curl/curl.h>
@@ -17,6 +18,7 @@ struct timelog_message_st {
   size_t size;
 };
 
+// Request struct
 struct timelog_request_st {
   struct timelog_message_st *cf;
   CURL *ch;
@@ -25,6 +27,14 @@ struct timelog_request_st {
   json_object *json;
   enum json_tokener_error jerr;
   struct curl_slist *headers;
+};
+
+// Reading struct
+struct timelog_reading_st {
+  float temp;
+  float humidity;
+  unsigned int light;
+  struct tm reading_time;
 };
 
 int timelog_request_init(struct timelog_request_st *request, const char *url,json_object *json){
@@ -75,7 +85,6 @@ CURLcode timelog_fetch_url(CURL *ch,
 {
   CURLcode rcode;  
 
-
   fetch->message = (char *) calloc(1, sizeof(fetch->message));
 
   if (fetch->message == NULL) {
@@ -102,10 +111,9 @@ CURLcode timelog_fetch_url(CURL *ch,
 int main(int argc, char *argv[]) {
   struct timelog_request_st request;
   struct timelog_request_st *rh = &request;
-  json_object *json;
   char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
   
-  json = json_object_new_object();
+  json_object *json = json_object_new_object();
   json_object_object_add(json, "title", json_object_new_string("testies"));
   json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
   json_object_object_add(json, "userId", json_object_new_int(123));
