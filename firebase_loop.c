@@ -99,6 +99,14 @@ char *timelog_url_create(struct timelog_reading_st *reading){
   return url;
 }
 
+struct timelog_request_st *timelog_request_create_with_reading(struct timelog_reading_st *reading){
+
+  char *url = timelog_url_create(reading);
+  json_object *json = timelog_json_create(reading);  
+
+  return timelog_request_create(url, json);
+}
+
 // Callback
 size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) {
   size_t buffer_size = size * nmemb;
@@ -121,59 +129,45 @@ size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) 
   return buffer_size;
 }
 
-CURLcode timelog_fetch_url(CURL *ch, 
-                           const char *url,
-                           struct timelog_message_st *fetch) 
-{
-  CURLcode rcode;  
+void timelog_request_post(struct timelog_request_st *rh){
+  rh->cf->message = (char *) calloc(1, sizeof(rh->cf->message));
 
-  fetch->message = (char *) calloc(1, sizeof(fetch->message));
-
-  if (fetch->message == NULL) {
-    fprintf(stderr, "ERROR: Failed to allocate payload in timelog_fetch_url");
-    return CURLE_FAILED_INIT;
+  if (rh->cf->message == NULL) {
+    fprintf(stderr, "ERROR: Failed to allocate payload in time_log_request_post");
+    rh->rcode = CURLE_FAILED_INIT;
   }
 
-  fetch->size = 0;
+  rh->cf->size = 0;
 
-  curl_easy_setopt(ch, CURLOPT_URL, url);
-  curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, timelog_callback);
-  curl_easy_setopt(ch, CURLOPT_WRITEDATA, (void *) fetch);
-  curl_easy_setopt(ch, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-  curl_easy_setopt(ch, CURLOPT_TIMEOUT, 5);
-  curl_easy_setopt(ch, CURLOPT_FOLLOWLOCATION, 1);
-  curl_easy_setopt(ch, CURLOPT_MAXREDIRS, 1);
+  curl_easy_setopt(rh->ch, CURLOPT_URL, rh->url);
+  curl_easy_setopt(rh->ch, CURLOPT_WRITEFUNCTION, timelog_callback);
+  curl_easy_setopt(rh->ch, CURLOPT_WRITEDATA, (void *) rh->cf);
+  curl_easy_setopt(rh->ch, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+  curl_easy_setopt(rh->ch, CURLOPT_TIMEOUT, 5);
+  curl_easy_setopt(rh->ch, CURLOPT_FOLLOWLOCATION, 1);
+  curl_easy_setopt(rh->ch, CURLOPT_MAXREDIRS, 1);
 
-  rcode = curl_easy_perform(ch);
+  printf("Posting data to: %s\n", rh->url);
+  
+  rh->rcode = curl_easy_perform(rh->ch);
 
-  return rcode;
+  curl_easy_cleanup(rh->ch);
+
+  json_object_put(rh->json);
 }
 
 
 int main(int argc, char *argv[]) {
-  //char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
-
-
   struct timelog_reading_st *reading = timelog_reading_create(90.08,50.05,300);
 
-  char *url = timelog_url_create(reading);
-  json_object *json = timelog_json_create(reading);  
-
-
-  struct timelog_request_st *rh = timelog_request_create(url, json);
+  struct timelog_request_st *rh = timelog_request_create_with_reading(reading);
 
   if ( !rh->ch) {
     fprintf(stderr, "ERROR: Failed to create curl handle in timelog_request_init");
     return 1;
   }
 
-  printf("Posting data to: %s\n", url);
-  
-  rh->rcode = timelog_fetch_url(rh->ch, rh->url, rh->cf);
-
-  curl_easy_cleanup(rh->ch);
-
-  json_object_put(rh->json);
+  timelog_request_post(rh);
 
   if (rh->rcode != CURLE_OK || rh->cf->size < 1) {
     fprintf(stderr, "ERROR: Failed to fetch url (%s) - curl said: %s", rh->url, curl_easy_strerror(rh->rcode));
