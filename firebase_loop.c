@@ -37,13 +37,14 @@ struct timelog_reading_st {
   struct tm reading_time;
 };
 
-int timelog_request_init(struct timelog_request_st *request, const char *url,json_object *json){
+struct timelog_request_st *timelog_request_create(const char *url,json_object *json){
+  struct timelog_request_st *request = malloc(sizeof (struct timelog_request_st));
+ 
   request->url = url;
   request->jerr = json_tokener_success;
   request->headers = NULL;
-  if ((request->ch = curl_easy_init()) == NULL) {
-    return 1;
-  }
+
+  request->ch = curl_easy_init();
 
   request->headers = curl_slist_append(request->headers, "Accept: application/json");
   request->headers = curl_slist_append(request->headers, "Content-Type: application/json");
@@ -54,7 +55,9 @@ int timelog_request_init(struct timelog_request_st *request, const char *url,jso
   curl_easy_setopt(request->ch, CURLOPT_HTTPHEADER, request->headers);
   curl_easy_setopt(request->ch, CURLOPT_POSTFIELDS, json_object_to_json_string(request->json));
 
-  return 0;
+  request->cf = malloc(sizeof (struct timelog_message_st));
+
+  return request;
 }
 
 // Callback
@@ -109,8 +112,6 @@ CURLcode timelog_fetch_url(CURL *ch,
 
 
 int main(int argc, char *argv[]) {
-  struct timelog_request_st request;
-  struct timelog_request_st *rh = &request;
   char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
   
   json_object *json = json_object_new_object();
@@ -118,7 +119,9 @@ int main(int argc, char *argv[]) {
   json_object_object_add(json, "body", json_object_new_string("testies...blah...blah"));
   json_object_object_add(json, "userId", json_object_new_int(123));
 
-  if ( timelog_request_init(rh, url, json) == 1) {
+  struct timelog_request_st *rh = timelog_request_create(url, json);
+
+  if ( !rh->ch) {
     fprintf(stderr, "ERROR: Failed to create curl handle in timelog_request_init");
     return 1;
   }
