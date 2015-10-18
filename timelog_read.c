@@ -99,6 +99,8 @@ int main(int argc, char *argv[]) {
   curl_easy_setopt(ch, CURLOPT_CUSTOMREQUEST, "POST");
   curl_easy_setopt(ch, CURLOPT_HTTPHEADER, headers); 
   curl_easy_setopt(ch, CURLOPT_POSTFIELDS, json_object_to_json_string(json));
+
+  printf("Posting data to: %s\n", url);
   
   rcode = timelog_fetch_url(ch, url, cf);
 
