@@ -17,6 +17,16 @@ struct timelog_message_st {
   size_t size;
 };
 
+struct timelog_request_st {
+  struct timelog_message_st *message;
+  CURL *ch;
+  CURLcode rcode;
+  char *url;
+  json_object *json;
+  enum json_tokener_error jerr;
+  struct curl_slist *headers;
+};
+
 // Callback
 size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) {
   size_t buffer_size = size * nmemb;
