@@ -84,6 +84,21 @@ json_object *timelog_json_create(struct timelog_reading_st *reading){
   return json;
 }
 
+// Create resource url from reading timing
+char *timelog_url_create(struct timelog_reading_st *reading){
+  int max_url_length = 1024;
+  char *url = malloc(max_url_length);
+  char reading_date[11];
+  char reading_seconds[9];
+
+  strftime(reading_date, 11, "%Y-%m-%d",reading->reading_time);
+  strftime(reading_seconds,9, "%H:%M:%S",reading->reading_time);  
+
+  snprintf(url, max_url_length,"https://glowing-inferno-9996.firebaseio.com/timelog/%s/%s.json",reading_date, reading_seconds);
+
+  return url;
+}
+
 // Callback
 size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) {
   size_t buffer_size = size * nmemb;
@@ -136,11 +151,14 @@ CURLcode timelog_fetch_url(CURL *ch,
 
 
 int main(int argc, char *argv[]) {
-  char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
+  //char *url = "https://glowing-inferno-9996.firebaseio.com/timelog/2015-10-19.json";
+
 
   struct timelog_reading_st *reading = timelog_reading_create(90.08,50.05,300);
 
+  char *url = timelog_url_create(reading);
   json_object *json = timelog_json_create(reading);  
+
 
   struct timelog_request_st *rh = timelog_request_create(url, json);
 
