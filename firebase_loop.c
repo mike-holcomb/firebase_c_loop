@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <json-c/json.h>
 #include <curl/curl.h>
@@ -129,7 +130,7 @@ size_t timelog_callback (void *message, size_t size, size_t nmemb, void *userp) 
   return buffer_size;
 }
 
-void timelog_request_post(struct timelog_request_st *rh){
+int timelog_request_post(struct timelog_request_st *rh){
   rh->cf->message = (char *) calloc(1, sizeof(rh->cf->message));
 
   if (rh->cf->message == NULL) {
@@ -154,20 +155,6 @@ void timelog_request_post(struct timelog_request_st *rh){
   curl_easy_cleanup(rh->ch);
 
   json_object_put(rh->json);
-}
-
-
-int main(int argc, char *argv[]) {
-  struct timelog_reading_st *reading = timelog_reading_create(90.08,50.05,300);
-
-  struct timelog_request_st *rh = timelog_request_create_with_reading(reading);
-
-  if ( !rh->ch) {
-    fprintf(stderr, "ERROR: Failed to create curl handle in timelog_request_init");
-    return 1;
-  }
-
-  timelog_request_post(rh);
 
   if (rh->rcode != CURLE_OK || rh->cf->size < 1) {
     fprintf(stderr, "ERROR: Failed to fetch url (%s) - curl said: %s", rh->url, curl_easy_strerror(rh->rcode));
@@ -175,7 +162,6 @@ int main(int argc, char *argv[]) {
   }
 
   if (rh->cf->message != NULL) {
-    printf("Curl returned: \n%s\n", rh->cf->message);
     rh->json = json_tokener_parse_verbose(rh->cf->message, &rh->jerr);
     free(rh->cf->message);
   } else {
@@ -191,4 +177,27 @@ int main(int argc, char *argv[]) {
   printf("Parsed JSON: %s\n", json_object_to_json_string(rh->json));
 
   return 0;
+}
+
+
+int main(int argc, char *argv[]) {
+
+  int i, result_code;
+
+  for (i=0; i <12; i++) {
+    struct timelog_reading_st *reading = timelog_reading_create(90.08,50.05,300);
+
+    struct timelog_request_st *rh = timelog_request_create_with_reading(reading);
+
+    if ( !rh->ch) {
+      fprintf(stderr, "ERROR: Failed to create curl handle in timelog_request_init");
+      return 1;
+    }
+
+    result_code = timelog_request_post(rh);
+
+    sleep(10);
+  }
+
+  return result_code;
 }
